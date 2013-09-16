@@ -12,6 +12,8 @@
 
 @interface PWMasterViewController () {
     NSMutableArray *_objects;
+    UIBarButtonItem *_addButton;
+    UITextField *_currentTextField;
 }
 @end
 
@@ -27,9 +29,9 @@
     [super viewDidLoad];
 	// Do any additional setup after loading the view, typically from a nib.
     self.navigationItem.leftBarButtonItem = self.editButtonItem;
-
-    UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(insertNewObject:)];
-    self.navigationItem.rightBarButtonItem = addButton;
+    
+    _addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(insertNewObject:)];
+    self.navigationItem.rightBarButtonItem = _addButton;
 }
 
 - (void)didReceiveMemoryWarning
@@ -43,7 +45,8 @@
     if (!_objects) {
         _objects = [[NSMutableArray alloc] init];
     }
-    [_objects insertObject:[NSDate date] atIndex:0];
+    NSString *aString = [[NSDate date] description];
+    [_objects insertObject:aString atIndex:0];
     NSIndexPath *indexPath = [NSIndexPath indexPathForRow:0 inSection:0];
     [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
 }
@@ -65,14 +68,22 @@
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"Cell" forIndexPath:indexPath];
 
     NSDate *object = _objects[indexPath.row];
-    cell.textLabel.text = [object description];
+    UITextField *textView = (UITextField *)[cell.contentView viewWithTag:1];
+    textView.delegate = self;
+    textView.text = [object description];
+    if (self.editing) {
+        textView.enabled = YES;
+    }
+    else{
+        textView.enabled = NO;
+    }
     return cell;
 }
 
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath
 {
     // Return NO if you do not want the specified item to be editable.
-    return YES;
+    return self.editing;
 }
 
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
@@ -101,13 +112,67 @@
 }
 */
 
+
+- (UITableViewCell *)superCellView:(UIView *)view{
+    UIView *superView = view;
+    while (![superView isKindOfClass:[UITableViewCell class]] && ![superView isKindOfClass:[UIWindow class]] ) {
+        if ([[superView superview] isKindOfClass:[UITableViewCell class]]) {
+            return (UITableViewCell *)[superView superview];
+        }
+        else{
+            superView = [superView superview];
+        }
+    }
+    return nil;
+}
+
+- (void)updateTextField:(UITextField *)textField{
+    UITableViewCell *cell = [self superCellView:textField];
+    if (cell != nil) {
+        NSIndexPath *path = [self.tableView indexPathForCell:cell];
+        [_objects replaceObjectAtIndex:path.row withObject:textField.text];
+        [self.tableView reloadData];
+    }
+}
+
 - (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
 {
     if ([[segue identifier] isEqualToString:@"showDetail"]) {
         NSIndexPath *indexPath = [self.tableView indexPathForSelectedRow];
-        NSDate *object = _objects[indexPath.row];
+        NSString *object = _objects[indexPath.row];
         [[segue destinationViewController] setDetailItem:object];
     }
 }
+
+- (void)setEditing:(BOOL)editing animated:(BOOL)animated{
+    [super setEditing:editing animated:animated];
+    if (_currentTextField) {
+        [self updateTextField:_currentTextField];
+    }
+    [self.tableView reloadData];
+
+}
+
+- (void)textFieldDidBeginEditing:(UITextField *)textField
+{
+    _currentTextField = textField;
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)textField
+{
+    _currentTextField = nil;
+    [self updateTextField:textField];
+}
+
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField{
+    [textField resignFirstResponder];
+    return YES;
+}
+
+//- (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string{
+//    
+//}
+
 
 @end

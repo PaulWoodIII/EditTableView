@@ -8,6 +8,6 @@
 
 #import <UIKit/UIKit.h>
 
-@interface PWMasterViewController : UITableViewController
+@interface PWMasterViewController : UITableViewController <UITextFieldDelegate>
 
 @end
